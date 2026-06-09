@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Vision Chat</title>
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --text: #1e293b;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            padding: 16px;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: fit-content;
+        }
+
+        h2 { font-size: 1.5rem; text-align: center; margin-bottom: 8px; }
+
+        .file-box {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            background: #fafafa;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 80px;
+            outline: none;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        #sendBtn { background-color: var(--primary); }
+        #sendBtn:hover { background-color: var(--primary-hover); }
+
+        #resetBtn { 
+            background-color: #64748b; 
+            display: none; /* Dynamic visibility */
+        }
+        #resetBtn.abort-mode { background-color: var(--danger); }
+        #resetBtn.abort-mode:hover { background-color: var(--danger-hover); }
+
+        .thinking-container {
+            background: #f1f5f9;
+            border-left: 4px solid #94a3b8;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #475569;
+            font-style: italic;
+            margin-bottom: 10px;
+            display: none; 
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #responseOutput {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            min-height: 60px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .thinking-container::-webkit-scrollbar,
+        #responseOutput::-webkit-scrollbar { width: 6px; }
+        .thinking-container::-webkit-scrollbar-thumb,
+        #responseOutput::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Vision Chat</h2>
+        <div class="file-box"><input type="file" id="imageInput" accept="image/*"></div>
+        <textarea id="prompt" placeholder="Ask a question about the image..."></textarea>
+        
+        <div class="actions">
+            <button id="sendBtn" onclick="sendChatRequest()">Send Request</button>
+            <button id="resetBtn" onclick="handleResetOrAbort()">Stop</button>
+        </div>
+
+        <div>
+            <h3 style="font-size: 0.9rem; color: #64748b; margin-bottom: 8px;">RESPONSE</h3>
+            <div id="thinkingOutput" class="thinking-container"></div>
+            <div id="responseOutput">Upload an image and ask a question to begin.</div>
+        </div>
+    </div>
+
+
+    <script>
+        let currentAbortController = null; // Global tracker for active fetch requests
+
+        async function sendChatRequest() {
+            const fileInput = document.getElementById('imageInput').files;
+            const promptText = document.getElementById('prompt').value;
+            const thinkingDiv = document.getElementById('thinkingOutput');
+            const outputDiv = document.getElementById('responseOutput');
+            const sendBtn = document.getElementById('sendBtn');
+            const resetBtn = document.getElementById('resetBtn');
+
+            if (!fileInput.length) {
+                alert("Please upload an image first.");
+                return;
+            }
+
+            // Setup UI states for streaming
+            thinkingDiv.style.display = "none";
+            thinkingDiv.innerText = "";
+            outputDiv.innerHTML = "<em>Connecting to Ollama...</em>";
+            
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = "0.5";
+            resetBtn.style.display = "block";
+            resetBtn.innerText = "Stop Generation";
+            resetBtn.classList.add("abort-mode");
+
+            // Instantiate AbortController
+            currentAbortController = new AbortController();
+
+            const reader = new FileReader();
+            reader.readAsDataURL(fileInput[0]);
+            reader.onload = async function () {
+                // Extract only the Base64 data (remove the prefix metadata string)
+                const base64ImageString = reader.result.split(',')[1]; 
+
+                const payload = {
+                    model: "qwen3-vl:8b", 
+                    messages: [{
+                        role: "user",
+                        content: promptText,
+                        images: [base64ImageString] 
+                    }],
+                    stream: true,
+                    think: false   
+                };
+
+                try {
+                    // Pass the abort signal down into the fetch settings
+                    const response = await fetch('http://localhost:11434/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: currentAbortController.signal 
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                    outputDiv.innerText = ""; 
+                    
+                    const readerStream = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = "";
+
+                    while (true) {
+                        const { value, done } = await readerStream.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop(); 
+
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+                            const json = JSON.parse(line);
+
+                            if (json.message.thinking) {
+                                thinkingDiv.style.display = "block";
+                                thinkingDiv.innerText += json.message.thinking;
+                                thinkingDiv.scrollTop = thinkingDiv.scrollHeight; // Auto Scroll
+                            } 
+                            if (json.message.content) {
+                                outputDiv.innerText += json.message.content;
+                                outputDiv.scrollTop = outputDiv.scrollHeight; // Auto Scroll
+                            }
+                        }
+                    }
+
+                    // Reset button back to standard UI reset mode once stream naturally finishes
+                    generationFinished();
+
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        outputDiv.innerHTML += "<br><strong style='color: var(--danger);'>[Generation stopped by user]</strong>";
+                    } else {
+                        outputDiv.innerHTML = `<span style="color: #ef4444;">Error: ${error.message}</span>`;
+                    }
+                    generationFinished();
+                    console.error("Fetch Event Status:", error);
+                }
+            };
+        }
+
+        function handleResetOrAbort() {
+            const resetBtn = document.getElementById('resetBtn');
+            
+            // If the AI is streaming, stop it
+            if (currentAbortController && resetBtn.classList.contains("abort-mode")) {
+                currentAbortController.abort();
+                currentAbortController = null;
+            } else {
+                // If AI is idle, reset the entire form
+                document.getElementById('imageInput').value = "";
+                document.getElementById('prompt').value = "";
+                document.getElementById('thinkingOutput').style.display = "none";
+                document.getElementById('thinkingOutput').innerText = "";
+                document.getElementById('responseOutput').innerHTML = "Upload an image and ask a question to begin.";
+                resetBtn.style.display = "none";
+            }
+        }
+
+        function generationFinished() {
+            const sendBtn = document.getElementById('sendBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = "1";
+            resetBtn.innerText = "Clear Form";
+            resetBtn.classList.remove("abort-mode");
+            currentAbortController = null;
+        }
+    </script>
+
+</body>
+</html>
