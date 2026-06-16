@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Invoice & Receipt Extractor</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --accent-color: #4f46e5;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            color: #111827;
+        }
+
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8fafc;
+            transition: border-color 0.2s;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent-color);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 16px;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        #previewContainer {
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        #previewImage {
+            max-width: 100%;
+            /* max-height: 250px; */
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status {
+            margin-top: 16px;
+            font-weight: 500;
+            text-align: center;
+            display: none;
+        }
+
+        .error {
+            color: #dc2626;
+        }
+
+        .loading {
+            color: var(--accent-color);
+        }
+
+        .result-field {
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .result-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .result-value {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        th {
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            max-height: 200px;
+        }
+
+        .receipt-text-section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .receipt-text-summary {
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            user-select: none;
+        }
+
+        .receipt-text-summary:hover {
+            color: var(--accent-color);
+        }
+
+        .receipt-text-summary::before {
+            content: '▶ ';
+            display: inline-block;
+            transition: transform 0.2s;
+            margin-right: 8px;
+            font-size: 0.7rem;
+        }
+
+        details[open] .receipt-text-summary::before {
+            transform: rotate(90deg);
+        }
+
+        .receipt-text-content {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <!-- Left Column: Upload -->
+        <div class="card">
+            <h2>Upload Document</h2>
+            <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                <p>Click to select or drag & drop</p>
+                <span style="font-size: 0.85rem; color: #6b7280;">Supports PDF, PNG, JPG, WEBP</span>
+                <input type="file" id="fileInput" accept=".pdf, .png, .jpg, .jpeg, .webp">
+            </div>
+
+            <button id="uploadBtn" class="btn" disabled>Extract Data</button>
+            <div id="statusMessage" class="status"></div>
+
+            <div id="previewContainer">
+                <p id="fileName" style="font-weight: 600; margin-bottom: 8px;"></p>
+                <img id="previewImage" src="" alt="Preview">
+            </div>
+        </div>
+
+        <!-- Right Column: Visualized Results -->
+        <div class="card">
+            <h2>Extracted Metadata</h2>
+            <div id="resultsDisplay" style="display: none;">
+                <div class="grid-fields" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="result-field">
+                        <span class="result-label">Vendor</span>
+                        <div id="resVendor" class="result-value">-</div>
+                    </div>
+                    <div class="result-field">
+                        <span class="result-label">Date</span>
+                        <div id="resDate" class="result-value">-</div>
+                    </div>
+                    <div class="result-field">
+                        <span class="result-label">Receipt #</span>
+                        <div id="resInvoiceNum" class="result-value">-</div>
+                    </div>
+                    <div class="result-field">
+                        <span class="result-label">Currency</span>
+                        <div id="resCurrency" class="result-value">-</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <span class="result-label">Line Items</span>
+                    <table id="itemsTable">
+                        <thead>
+                                    <tr>
+                                <th>Description</th>
+                                <th style="text-align: right;">Qty</th>
+                                <th style="text-align: right;">Unit Price</th>
+                                <th style="text-align: right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="result-field">
+                        <span class="result-label">Subtotal</span>
+                        <div id="resSubtotal" class="result-value">-</div>
+                    </div>
+                    <div class="result-field">
+                        <span class="result-label">Tax</span>
+                        <div id="resTax" class="result-value">-</div>
+                    </div>
+                </div>
+                <div class="result-field" style="margin-top: 12px; border-bottom: none;">
+                    <span class="result-label" style="color: var(--accent-color);">Total Amount</span>
+                    <div id="resTotal" class="result-value"
+                        style="font-size: 1.6rem; font-weight: 700; color: var(--accent-color);">-</div>
+                </div>
+
+                <details style="margin-top: 20px;">
+                    <summary style="cursor: pointer; font-size: 0.85rem; color: #6b7280; font-weight: 600;">View Raw
+                        JSON Response</summary>
+                    <pre id="rawJson"></pre>
+                </details>
+
+                <details class="receipt-text-section">
+                    <summary class="receipt-text-summary">View Extracted Receipt Text</summary>
+                    <div class="receipt-text-content" id="receiptTextContent"></div>
+                </details>
+            </div>
+            <div id="placeholderText" style="color: #9ca3af; text-align: center; padding-top: 60px;">
+                Upload a document and trigger extraction to see parsed entities.
+            </div>
+        </div>
+    </div>
+
+    <script>
+const API_URL = "http://localhost:8000/extract";
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
+const previewContainer = document.getElementById('previewContainer');
+const previewImage = document.getElementById('previewImage');
+const fileName = document.getElementById('fileName');
+const statusMessage = document.getElementById('statusMessage');
+const placeholderText = document.getElementById('placeholderText');
+const resultsDisplay = document.getElementById('resultsDisplay');
+
+// Handle file selection change
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    fileName.textContent = file.name;
+    uploadBtn.disabled = false;
+    previewContainer.style.display = 'block';
+
+    // Show image previews natively; hide preview if file format is PDF
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => { 
+            previewImage.src = e.target.result; 
+            previewImage.style.display = 'inline-block'; 
+        };
+        reader.readAsDataURL(file);
+    } else {
+        previewImage.style.display = 'none'; // PDFs won't preview natively in simple img tags
+    }
+});
+
+// Handle form submission to Local Host API
+uploadBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // UI Feedback State: Processing
+    statusMessage.style.display = 'block';
+    statusMessage.className = 'status loading';
+    statusMessage.textContent = 'Processing with local vision models... (this may take a few seconds)';
+    uploadBtn.disabled = true;
+    resultsDisplay.style.display = 'none';
+    placeholderText.style.display = 'block';
+
+    try {
+        const startTime = Date.now();
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || `Server returned error status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const endTime = Date.now();
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+        
+        renderResults(data);
+        
+        statusMessage.style.display = 'block';
+        statusMessage.className = 'status success';
+        statusMessage.textContent = `Successfully extracted receipt data (completed in ${timeTaken}s)`;
+    } catch (error) {
+        statusMessage.className = 'status error';
+        statusMessage.textContent = `Error: ${error.message}`;
+        console.error("Extraction workflow error:", error);
+    } finally {
+        uploadBtn.disabled = false;
+    }
+});
+
+// Inject API parameters into UI elements smoothly
+function renderResults(data) {
+    placeholderText.style.display = 'none';
+    resultsDisplay.style.display = 'block';
+
+    // Extract the parsed data from the response wrapper
+    const parsedData = data.data;
+
+    document.getElementById('resVendor').textContent = parsedData.vendor_name || 'N/A';
+    document.getElementById('resDate').textContent = parsedData.receipt_date || 'N/A';
+    document.getElementById('resInvoiceNum').textContent = parsedData.receipt_number || 'N/A';
+    document.getElementById('resCurrency').textContent = parsedData.currency || 'N/A';
+    
+    const currencySymbols = { USD: '$', CAD: 'C$', EUR: '€', GBP: '£' };
+    const symbol = currencySymbols[parsedData.currency] || parsedData.currency || '$';
+    const fmt = (num) => typeof num === 'number' ? `${symbol}${num.toFixed(2)}` : 'N/A';
+    document.getElementById('resSubtotal').textContent = fmt(parsedData.subtotal);
+    document.getElementById('resTax').textContent = fmt(parsedData.tax_amount);
+    document.getElementById('resTotal').textContent = fmt(parsedData.total_amount);
+
+    const tbody = document.getElementById('itemsBody');
+    tbody.innerHTML = ''; // Reset items
+    
+    if (parsedData.items && parsedData.items.length > 0) {
+        parsedData.items.forEach(item => {
+            const qtyLabel = item.quantity != null ? `${item.quantity}${item.quantity_unit ? ` ${item.quantity_unit}` : ''}` : '-';
+            const unitPrice = item.unit_price != null ? fmt(item.unit_price) : 'N/A';
+            const totalPrice = item.total_price != null ? fmt(item.total_price) : 'N/A';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.item_name || 'Unknown Item'}</td>
+                <td style="text-align: right;">${qtyLabel}</td>
+                <td style="text-align: right;">${unitPrice}</td>
+                <td style="text-align: right;">${totalPrice}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    } else {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: #9ca3af; text-align: center;">No line items extracted</td></tr>`;
+    }
+
+    // Display the raw receipt text
+    document.getElementById('receiptTextContent').textContent = data.receipt_text;
+
+    // Dump literal payload inside debug window block
+    document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
+}
+    </script>
+</body>
+</html>
