@@ -1,4 +1,5 @@
 import base64
+import json
 from typing import List, Optional
 
 import requests
@@ -6,10 +7,12 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError
 
+from parsers.factory import get_parser_for_text
+
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
-OLLAMA_TIMEOUT_SECONDS = 600
+OLLAMA_TIMEOUT_SECONDS = 1200
 TEXT_MODEL_NAME = "qwen3:8b" # "granite3-moe:1b"
-VISION_MODEL_NAME = "glm-ocr" # "qwen3-vl:8b" # "Maternion/LightOnOCR-2:1b"
+VISION_MODEL_NAME = "glm-ocr-lowvram" # "glm-ocr:q8_0" # "glm-ocr" # "qwen3-vl:8b" # "Maternion/LightOnOCR-2:1b"
 SUPPORTED_IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 
 app = FastAPI(title="GPU-Optimized Invoice & Receipt Extractor")
@@ -161,7 +164,12 @@ async def extract_document_data(file: UploadFile = File(...)) -> ExtractResponse
 
     image_format = filename.rsplit(".", maxsplit=1)[-1]
     receipt_text = query_local_vision_llm(file_bytes, image_format)
-    json_output = query_local_text_llm(receipt_text)
+
+    if 'foodbasics' in receipt_text.lower() or 'food basics' in receipt_text.lower():
+        parser = get_parser_for_text(receipt_text)
+        json_output = json.dumps(parser.parse(receipt_text), indent=4)
+    else:
+        json_output = query_local_text_llm(receipt_text)
 
     try:
         parsed_data = InvoiceReceiptSchema.model_validate_json(json_output)
