@@ -5,222 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local Invoice & Receipt Extractor</title>
-    <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --card-color: #ffffff;
-            --text-color: #333333;
-            --accent-color: #4f46e5;
-            --border-color: #e5e7eb;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .card {
-            background: var(--card-color);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border-color);
-        }
-
-        h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            color: #111827;
-        }
-
-        .upload-zone {
-            border: 2px dashed #cbd5e1;
-            border-radius: 8px;
-            padding: 30px 20px;
-            text-align: center;
-            cursor: pointer;
-            background: #f8fafc;
-            transition: border-color 0.2s;
-        }
-
-        .upload-zone:hover {
-            border-color: var(--accent-color);
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        .btn {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 16px;
-            font-size: 1rem;
-            transition: opacity 0.2s;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        .btn:disabled {
-            background-color: #9ca3af;
-            cursor: not-allowed;
-        }
-
-        #previewContainer {
-            margin-top: 20px;
-            text-align: center;
-            display: none;
-        }
-
-        #previewImage {
-            max-width: 100%;
-            /* max-height: 250px; */
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-        }
-
-        .status {
-            margin-top: 16px;
-            font-weight: 500;
-            text-align: center;
-            display: none;
-        }
-
-        .error {
-            color: #dc2626;
-        }
-
-        .loading {
-            color: var(--accent-color);
-        }
-
-        .result-field {
-            margin-bottom: 12px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-        }
-
-        .result-label {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            color: #6b7280;
-            font-weight: 600;
-        }
-
-        .result-value {
-            font-size: 1.1rem;
-            font-weight: 500;
-            margin-top: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
-        }
-
-        th,
-        td {
-            text-align: left;
-            padding: 8px;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.95rem;
-        }
-
-        th {
-            color: #6b7280;
-            font-weight: 600;
-        }
-
-        pre {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 12px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-size: 0.85rem;
-            max-height: 200px;
-        }
-
-        .receipt-text-section {
-            margin-top: 24px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .receipt-text-summary {
-            cursor: pointer;
-            font-size: 0.85rem;
-            color: #6b7280;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            user-select: none;
-        }
-
-        .receipt-text-summary:hover {
-            color: var(--accent-color);
-        }
-
-        .receipt-text-summary::before {
-            content: '▶ ';
-            display: inline-block;
-            transition: transform 0.2s;
-            margin-right: 8px;
-            font-size: 0.7rem;
-        }
-
-        details[open] .receipt-text-summary::before {
-            transform: rotate(90deg);
-        }
-
-        .receipt-text-content {
-            background: #f8fafc;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 12px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            max-height: 300px;
-            overflow-y: auto;
-            color: #333;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="scan-page">
 
     <div class="container">
         <!-- Left Column: Upload -->
@@ -228,15 +16,15 @@
             <h2>Upload Document</h2>
             <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
                 <p>Click to select or drag & drop</p>
-                <span style="font-size: 0.85rem; color: #6b7280;">Supports PDF, PNG, JPG, WEBP</span>
+                <span class="hint">Supports PDF, PNG, JPG, WEBP</span>
                 <input type="file" id="fileInput" accept=".pdf, .png, .jpg, .jpeg, .webp">
             </div>
 
             <button id="uploadBtn" class="btn" disabled>Extract Data</button>
-            <div id="statusMessage" class="status"></div>
+            <div id="statusMessage" class="status hidden"></div>
 
-            <div id="previewContainer">
-                <p id="fileName" style="font-weight: 600; margin-bottom: 8px;"></p>
+            <div id="previewContainer" class="hidden">
+                <p id="fileName" class="file-name"></p>
                 <img id="previewImage" src="" alt="Preview">
             </div>
         </div>
@@ -244,35 +32,40 @@
         <!-- Right Column: Visualized Results -->
         <div class="card">
             <h2>Extracted Metadata</h2>
-            <div id="resultsDisplay" style="display: none;">
-                <div class="grid-fields" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div id="resultsDisplay" class="hidden">
+                <div class="grid-2">
                     <div class="result-field">
-                        <span class="result-label">Vendor</span>
-                        <div id="resVendor" class="result-value">-</div>
+                        <label class="result-label" for="editVendor">Vendor</label>
+                        <input id="editVendor" class="result-input" type="text">
                     </div>
                     <div class="result-field">
-                        <span class="result-label">Date</span>
-                        <div id="resDate" class="result-value">-</div>
+                        <label class="result-label" for="editDate">Date</label>
+                        <input id="editDate" class="result-input" type="date">
                     </div>
                     <div class="result-field">
-                        <span class="result-label">Receipt #</span>
-                        <div id="resInvoiceNum" class="result-value">-</div>
+                        <label class="result-label" for="editReceiptNumber">Receipt #</label>
+                        <input id="editReceiptNumber" class="result-input" type="text">
                     </div>
                     <div class="result-field">
-                        <span class="result-label">Currency</span>
-                        <div id="resCurrency" class="result-value">-</div>
+                        <label class="result-label" for="editCurrency">Currency</label>
+                        <input id="editCurrency" class="result-input" type="text" maxlength="3" placeholder="CAD">
                     </div>
                 </div>
 
-                <div style="margin-top: 20px;">
-                    <span class="result-label">Line Items</span>
+                <div class="items-table-wrap">
+                    <div class="flex-between">
+                        <span class="result-label">Line Items</span>
+                        <button id="addItemBtn" class="inline-btn" type="button">Add Item</button>
+                    </div>
                     <table id="itemsTable">
                         <thead>
-                                    <tr>
+                            <tr>
                                 <th>Description</th>
-                                <th style="text-align: right;">Qty</th>
-                                <th style="text-align: right;">Unit Price</th>
-                                <th style="text-align: right;">Total</th>
+                                <th class="number">Qty</th>
+                                <th>Unit</th>
+                                <th class="number">Unit Price</th>
+                                <th class="number">Total</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody id="itemsBody">
@@ -281,41 +74,45 @@
                     </table>
                 </div>
 
-                <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="grid-2 mt-20">
                     <div class="result-field">
-                        <span class="result-label">Subtotal</span>
-                        <div id="resSubtotal" class="result-value">-</div>
+                        <label class="result-label" for="editSubtotal">Subtotal</label>
+                        <input id="editSubtotal" class="result-input number-input" type="number" step="0.01">
                     </div>
                     <div class="result-field">
-                        <span class="result-label">Tax</span>
-                        <div id="resTax" class="result-value">-</div>
+                        <label class="result-label" for="editTax">Tax</label>
+                        <input id="editTax" class="result-input number-input" type="number" step="0.01">
                     </div>
                 </div>
-                <div class="result-field" style="margin-top: 12px; border-bottom: none;">
-                    <span class="result-label" style="color: var(--accent-color);">Total Amount</span>
-                    <div id="resTotal" class="result-value"
-                        style="font-size: 1.6rem; font-weight: 700; color: var(--accent-color);">-</div>
+                <div class="result-field result-field-total">
+                    <label class="result-label accent-text" for="editTotal">Total Amount</label>
+                    <input id="editTotal" class="result-input number-input result-total-input accent-text" type="number" step="0.01">
                 </div>
 
-                <details style="margin-top: 20px;">
-                    <summary style="cursor: pointer; font-size: 0.85rem; color: #6b7280; font-weight: 600;">View Raw
+                <button id="saveBtn" class="btn" type="button">Save to Local DB</button>
+                <div id="saveStatus" class="save-status"></div>
+
+                <details class="raw-json-details">
+                    <summary class="hint summary-toggle">View Raw
                         JSON Response</summary>
                     <pre id="rawJson"></pre>
                 </details>
 
                 <details class="receipt-text-section">
                     <summary class="receipt-text-summary">View Extracted Receipt Text</summary>
-                    <div class="receipt-text-content" id="receiptTextContent"></div>
+                    <div class="receipt-text-content mono-block" id="receiptTextContent"></div>
                 </details>
             </div>
-            <div id="placeholderText" style="color: #9ca3af; text-align: center; padding-top: 60px;">
+            <div id="placeholderText" class="placeholder-text">
                 Upload a document and trigger extraction to see parsed entities.
             </div>
         </div>
     </div>
 
+    <script src="script.js"></script>
     <script>
-const API_URL = "http://localhost:8000/extract";
+const EXTRACT_API_URL = `${API_BASE_URL}/extract`;
+const SAVE_RECEIPT_API_URL = `${API_BASE_URL}/receipts`;
 const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const previewContainer = document.getElementById('previewContainer');
@@ -324,6 +121,12 @@ const fileName = document.getElementById('fileName');
 const statusMessage = document.getElementById('statusMessage');
 const placeholderText = document.getElementById('placeholderText');
 const resultsDisplay = document.getElementById('resultsDisplay');
+const itemsBody = document.getElementById('itemsBody');
+const addItemBtn = document.getElementById('addItemBtn');
+const saveBtn = document.getElementById('saveBtn');
+const saveStatus = document.getElementById('saveStatus');
+let currentReceiptId = null;
+let currentReceiptText = '';
 
 // Handle file selection change
 fileInput.addEventListener('change', (e) => {
@@ -333,13 +136,16 @@ fileInput.addEventListener('change', (e) => {
     fileName.textContent = file.name;
     uploadBtn.disabled = false;
     previewContainer.style.display = 'block';
+    currentReceiptId = null;
+    currentReceiptText = '';
+    saveStatus.textContent = '';
 
     // Show image previews natively; hide preview if file format is PDF
     if (file.type.startsWith('image/')) {
         const reader = new FileReader();
-        reader.onload = (e) => { 
-            previewImage.src = e.target.result; 
-            previewImage.style.display = 'inline-block'; 
+        reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            previewImage.style.display = 'inline-block';
         };
         reader.readAsDataURL(file);
     } else {
@@ -360,27 +166,24 @@ uploadBtn.addEventListener('click', async () => {
     statusMessage.className = 'status loading';
     statusMessage.textContent = 'Processing with local vision models... (this may take a few seconds)';
     uploadBtn.disabled = true;
+    saveBtn.disabled = true;
     resultsDisplay.style.display = 'none';
     placeholderText.style.display = 'block';
+    saveStatus.textContent = '';
 
     try {
         const startTime = Date.now();
-        const response = await fetch(API_URL, {
+        const data = await fetchJson(EXTRACT_API_URL, {
             method: 'POST',
             body: formData
         });
-
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.detail || `Server returned error status ${response.status}`);
-        }
-
-        const data = await response.json();
         const endTime = Date.now();
         const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
-        
+
+        currentReceiptId = null;
+        currentReceiptText = data.receipt_text || '';
         renderResults(data);
-        
+
         statusMessage.style.display = 'block';
         statusMessage.className = 'status success';
         statusMessage.textContent = `Successfully extracted receipt data (completed in ${timeTaken}s)`;
@@ -393,49 +196,158 @@ uploadBtn.addEventListener('click', async () => {
     }
 });
 
+addItemBtn.addEventListener('click', () => {
+    appendItemRow({ quantity_unit: 'cnt' });
+});
+
+saveBtn.addEventListener('click', async () => {
+    saveStatus.className = 'save-status loading';
+    saveStatus.textContent = 'Saving reviewed receipt...';
+    saveBtn.disabled = true;
+
+    try {
+        const payload = buildSavePayload();
+        const result = await fetchJson(SAVE_RECEIPT_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        currentReceiptId = result.receipt_id;
+        saveStatus.className = 'save-status success';
+        saveStatus.textContent = `Saved ${result.item_count} item(s) as ${result.receipt_id} (${result.action}).`;
+        document.getElementById('rawJson').textContent = JSON.stringify({ ...payload, save_result: result }, null, 2);
+    } catch (error) {
+        saveStatus.className = 'save-status error';
+        saveStatus.textContent = `Save failed: ${error.message}`;
+        console.error("Save workflow error:", error);
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
+
+function setInputValue(id, value) {
+    document.getElementById(id).value = value ?? '';
+}
+
+function normalizeDateInput(value) {
+    if (!value) return '';
+    return String(value).slice(0, 10);
+}
+
+function createTableInput(className, value, type = 'text', step = null) {
+    const input = document.createElement('input');
+    input.className = className;
+    input.type = type;
+    if (step) input.step = step;
+    input.value = value ?? '';
+    return input;
+}
+
+function appendCell(row, child) {
+    const cell = document.createElement('td');
+    cell.appendChild(child);
+    row.appendChild(cell);
+}
+
+function appendItemRow(item = {}) {
+    const row = document.createElement('tr');
+    row.className = 'item-row';
+
+    appendCell(row, createTableInput('item-input item-name-input item-name', item.item_name));
+    appendCell(row, createTableInput('item-input number-input item-quantity', item.quantity, 'number', '0.001'));
+    appendCell(row, createTableInput('item-input item-unit', item.quantity_unit));
+    appendCell(row, createTableInput('item-input number-input item-unit-price', item.unit_price, 'number', '0.01'));
+    appendCell(row, createTableInput('item-input number-input item-total-price', item.total_price, 'number', '0.01'));
+
+    const removeButton = document.createElement('button');
+    removeButton.className = 'inline-btn remove-item-btn';
+    removeButton.type = 'button';
+    removeButton.textContent = 'X';
+    removeButton.title = 'Remove item';
+    removeButton.addEventListener('click', () => row.remove());
+    appendCell(row, removeButton);
+
+    itemsBody.appendChild(row);
+}
+
+function optionalNumber(value) {
+    if (value === '') return null;
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) throw new Error(`Invalid number: ${value}`);
+    return parsed;
+}
+
+function requiredNumber(value, label) {
+    const parsed = optionalNumber(value);
+    if (parsed === null) throw new Error(`${label} is required.`);
+    return parsed;
+}
+
+function buildSavePayload() {
+    const vendorName = document.getElementById('editVendor').value.trim();
+    const receiptDate = document.getElementById('editDate').value.trim();
+    if (!vendorName) throw new Error('Vendor is required.');
+    if (!receiptDate) throw new Error('Receipt date is required.');
+
+    const items = [...itemsBody.querySelectorAll('.item-row')]
+        .map((row, index) => {
+            const itemName = row.querySelector('.item-name').value.trim();
+            const totalValue = row.querySelector('.item-total-price').value.trim();
+            const hasAnyValue = [...row.querySelectorAll('input')].some(input => input.value.trim() !== '');
+            if (!hasAnyValue) return null;
+            if (!itemName) throw new Error(`Item ${index + 1} needs a description.`);
+            return {
+                item_name: itemName,
+                quantity: optionalNumber(row.querySelector('.item-quantity').value.trim()),
+                quantity_unit: row.querySelector('.item-unit').value.trim() || null,
+                unit_price: optionalNumber(row.querySelector('.item-unit-price').value.trim()),
+                total_price: requiredNumber(totalValue, `Item ${index + 1} total`)
+            };
+        })
+        .filter(Boolean);
+
+    return {
+        receipt_id: currentReceiptId,
+        receipt_text: currentReceiptText,
+        data: {
+            vendor_name: vendorName,
+            receipt_date: receiptDate,
+            receipt_number: document.getElementById('editReceiptNumber').value.trim() || null,
+            items,
+            subtotal: optionalNumber(document.getElementById('editSubtotal').value.trim()),
+            tax_amount: optionalNumber(document.getElementById('editTax').value.trim()),
+            total_amount: requiredNumber(document.getElementById('editTotal').value.trim(), 'Total amount'),
+            currency: document.getElementById('editCurrency').value.trim().toUpperCase() || null
+        }
+    };
+}
+
 // Inject API parameters into UI elements smoothly
 function renderResults(data) {
     placeholderText.style.display = 'none';
     resultsDisplay.style.display = 'block';
+    saveBtn.disabled = false;
 
     // Extract the parsed data from the response wrapper
     const parsedData = data.data;
 
-    document.getElementById('resVendor').textContent = parsedData.vendor_name || 'N/A';
-    document.getElementById('resDate').textContent = parsedData.receipt_date || 'N/A';
-    document.getElementById('resInvoiceNum').textContent = parsedData.receipt_number || 'N/A';
-    document.getElementById('resCurrency').textContent = parsedData.currency || 'N/A';
-    
-    const currencySymbols = { USD: '$', CAD: 'C$', EUR: '€', GBP: '£' };
-    const symbol = currencySymbols[parsedData.currency] || parsedData.currency || '$';
-    const fmt = (num) => typeof num === 'number' ? `${symbol}${num.toFixed(2)}` : 'N/A';
-    document.getElementById('resSubtotal').textContent = fmt(parsedData.subtotal);
-    document.getElementById('resTax').textContent = fmt(parsedData.tax_amount);
-    document.getElementById('resTotal').textContent = fmt(parsedData.total_amount);
+    setInputValue('editVendor', parsedData.vendor_name);
+    setInputValue('editDate', normalizeDateInput(parsedData.receipt_date));
+    setInputValue('editReceiptNumber', parsedData.receipt_number);
+    setInputValue('editCurrency', parsedData.currency);
+    setInputValue('editSubtotal', parsedData.subtotal);
+    setInputValue('editTax', parsedData.tax_amount);
+    setInputValue('editTotal', parsedData.total_amount);
 
-    const tbody = document.getElementById('itemsBody');
-    tbody.innerHTML = ''; // Reset items
-    
+    itemsBody.innerHTML = '';
     if (parsedData.items && parsedData.items.length > 0) {
-        parsedData.items.forEach(item => {
-            const qtyLabel = item.quantity != null ? `${item.quantity}${item.quantity_unit ? ` ${item.quantity_unit}` : ''}` : '-';
-            const unitPrice = item.unit_price != null ? fmt(item.unit_price) : 'N/A';
-            const totalPrice = item.total_price != null ? fmt(item.total_price) : 'N/A';
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${item.item_name || 'Unknown Item'}</td>
-                <td style="text-align: right;">${qtyLabel}</td>
-                <td style="text-align: right;">${unitPrice}</td>
-                <td style="text-align: right;">${totalPrice}</td>
-            `;
-            tbody.appendChild(row);
-        });
+        parsedData.items.forEach(item => appendItemRow(item));
     } else {
-        tbody.innerHTML = `<tr><td colspan="4" style="color: #9ca3af; text-align: center;">No line items extracted</td></tr>`;
+        appendItemRow();
     }
 
     // Display the raw receipt text
-    document.getElementById('receiptTextContent').textContent = data.receipt_text;
+    document.getElementById('receiptTextContent').textContent = data.receipt_text || '';
 
     // Dump literal payload inside debug window block
     document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);

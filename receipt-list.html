@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Receipts</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="list-page">
+    <main class="app-shell">
+        <section class="panel sidebar">
+            <header class="panel-header">
+                <div>
+                    <h1>Saved Receipts</h1>
+                    <div id="receiptCount" class="subtle">Loading...</div>
+                </div>
+                <button id="refreshBtn" class="btn" type="button">Refresh</button>
+            </header>
+            <div class="toolbar">
+                <input id="searchInput" class="search-input" type="search" placeholder="Search vendor, date, id, receipt #">
+                <a class="link-btn btn-primary" href="receipt-scan.html">Scan Receipt</a>
+            </div>
+            <div id="listStatus" class="status">Loading saved receipts...</div>
+            <div id="receiptList" class="receipt-list"></div>
+        </section>
+
+        <section class="panel content">
+            <header class="panel-header">
+                <div>
+                    <h2 id="detailTitle">Select a receipt</h2>
+                    <div id="detailSubtitle" class="subtle">Saved receipt details will appear here.</div>
+                </div>
+                <div class="actions">
+                    <button id="copyIdBtn" class="btn" type="button" disabled>Copy ID</button>
+                </div>
+            </header>
+            <div id="detailStatus" class="empty-state">Choose a saved receipt from the list.</div>
+            <div id="detailBody" class="detail-body hidden">
+                <div class="summary-grid">
+                    <div class="field">
+                        <span class="label">Receipt ID</span>
+                        <div id="detailId" class="value"></div>
+                    </div>
+                    <div class="field">
+                        <span class="label">Vendor</span>
+                        <div id="detailVendor" class="value"></div>
+                    </div>
+                    <div class="field">
+                        <span class="label">Date</span>
+                        <div id="detailDate" class="value"></div>
+                    </div>
+                    <div class="field">
+                        <span class="label">Receipt #</span>
+                        <div id="detailReceiptNumber" class="value"></div>
+                    </div>
+                    <div class="field">
+                        <span class="label">Subtotal</span>
+                        <div id="detailSubtotal" class="value"></div>
+                    </div>
+                    <div class="field">
+                        <span class="label">Tax</span>
+                        <div id="detailTax" class="value"></div>
+                    </div>
+                    <div class="field">
+                        <span class="label">Total</span>
+                        <div id="detailTotal" class="value"></div>
+                    </div>
+                    <div class="field">
+                        <span class="label">Updated</span>
+                        <div id="detailUpdated" class="value"></div>
+                    </div>
+                </div>
+
+                <section>
+                    <h3>Items</h3>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th class="number">Qty</th>
+                                    <th>Unit</th>
+                                    <th class="number">Unit Price</th>
+                                    <th class="number">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <details>
+                    <summary class="subtle summary-toggle">Raw extracted text</summary>
+                    <div id="rawText" class="raw-text mono-block"></div>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+    <script>
+const RECEIPTS_API_URL = `${API_BASE_URL}/receipts`;
+const receiptCount = document.getElementById('receiptCount');
+const refreshBtn = document.getElementById('refreshBtn');
+const searchInput = document.getElementById('searchInput');
+const listStatus = document.getElementById('listStatus');
+const receiptList = document.getElementById('receiptList');
+const detailTitle = document.getElementById('detailTitle');
+const detailSubtitle = document.getElementById('detailSubtitle');
+const detailStatus = document.getElementById('detailStatus');
+const detailBody = document.getElementById('detailBody');
+const copyIdBtn = document.getElementById('copyIdBtn');
+const itemsBody = document.getElementById('itemsBody');
+let receipts = [];
+let selectedReceiptId = null;
+
+refreshBtn.addEventListener('click', loadReceipts);
+searchInput.addEventListener('input', renderReceiptList);
+copyIdBtn.addEventListener('click', async () => {
+    if (!selectedReceiptId) return;
+    await navigator.clipboard.writeText(selectedReceiptId);
+    copyIdBtn.textContent = 'Copied';
+    setTimeout(() => { copyIdBtn.textContent = 'Copy ID'; }, 1200);
+});
+
+function formatMoney(value, currency) {
+    if (typeof value !== 'number') return 'N/A';
+    const prefix = currency ? `${currency} ` : '';
+    return `${prefix}${value.toFixed(2)}`;
+}
+
+function formatDate(value) {
+    if (!value) return 'N/A';
+    return String(value).slice(0, 10);
+}
+
+function formatValue(value) {
+    return value === null || value === undefined || value === '' ? 'N/A' : value;
+}
+
+function receiptMatchesSearch(receipt, query) {
+    if (!query) return true;
+    const haystack = [
+        receipt.receipt_id,
+        receipt.vendor_name,
+        formatDate(receipt.receipt_date),
+        receipt.receipt_number,
+        receipt.currency,
+        String(receipt.total_amount)
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(query.toLowerCase());
+}
+
+async function loadReceipts() {
+    listStatus.style.display = 'block';
+    listStatus.className = 'status';
+    listStatus.textContent = 'Loading saved receipts...';
+    refreshBtn.disabled = true;
+
+    try {
+        receipts = await fetchJson(RECEIPTS_API_URL);
+        receiptCount.textContent = `${receipts.length} receipt${receipts.length === 1 ? '' : 's'}`;
+        renderReceiptList();
+
+        if (receipts.length === 0) {
+            showNoSelection('No saved receipts yet.', 'Scan and save a receipt to populate this view.');
+        } else if (selectedReceiptId && receipts.some(receipt => receipt.receipt_id === selectedReceiptId)) {
+            await loadReceiptDetail(selectedReceiptId);
+        } else {
+            await loadReceiptDetail(receipts[0].receipt_id);
+        }
+    } catch (error) {
+        listStatus.className = 'status error';
+        listStatus.textContent = `Error: ${error.message}`;
+        receiptCount.textContent = 'Unavailable';
+        console.error('Receipt list load failed:', error);
+    } finally {
+        refreshBtn.disabled = false;
+    }
+}
+
+function renderReceiptList() {
+    const query = searchInput.value.trim();
+    const visibleReceipts = receipts.filter(receipt => receiptMatchesSearch(receipt, query));
+    receiptList.innerHTML = '';
+
+    if (visibleReceipts.length === 0) {
+        listStatus.style.display = 'block';
+        listStatus.textContent = receipts.length === 0 ? 'No saved receipts found.' : 'No receipts match the current search.';
+        return;
+    }
+
+    listStatus.style.display = 'none';
+    visibleReceipts.forEach(receipt => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `receipt-row${receipt.receipt_id === selectedReceiptId ? ' active' : ''}`;
+        button.innerHTML = `
+            <div class="receipt-row-top">
+                <span class="vendor-name"></span>
+                <span class="amount"></span>
+            </div>
+            <div class="receipt-row-bottom subtle">
+                <span class="receipt-date"></span>
+                <span class="item-count"></span>
+            </div>
+            <div class="subtle receipt-id"></div>
+        `;
+        button.querySelector('.vendor-name').textContent = receipt.vendor_name;
+        button.querySelector('.amount').textContent = formatMoney(receipt.total_amount, receipt.currency);
+        button.querySelector('.receipt-date').textContent = formatDate(receipt.receipt_date);
+        button.querySelector('.item-count').textContent = `${receipt.item_count} item${receipt.item_count === 1 ? '' : 's'}`;
+        button.querySelector('.receipt-id').textContent = receipt.receipt_id;
+        button.addEventListener('click', () => loadReceiptDetail(receipt.receipt_id));
+        receiptList.appendChild(button);
+    });
+}
+
+async function loadReceiptDetail(receiptId) {
+    selectedReceiptId = receiptId;
+    renderReceiptList();
+    detailStatus.style.display = 'block';
+    detailStatus.className = 'empty-state';
+    detailStatus.textContent = 'Loading receipt details...';
+    detailBody.style.display = 'none';
+    copyIdBtn.disabled = true;
+
+    try {
+        const receipt = await fetchJson(`${RECEIPTS_API_URL}/${encodeURIComponent(receiptId)}`);
+        renderReceiptDetail(receipt);
+    } catch (error) {
+        showNoSelection('Unable to load receipt.', error.message, true);
+        console.error('Receipt detail load failed:', error);
+    }
+}
+
+function showNoSelection(title, subtitle, isError = false) {
+    detailTitle.textContent = title;
+    detailSubtitle.textContent = subtitle;
+    detailStatus.style.display = 'block';
+    detailStatus.className = `empty-state${isError ? ' error' : ''}`;
+    detailStatus.textContent = subtitle;
+    detailBody.style.display = 'none';
+    copyIdBtn.disabled = true;
+}
+
+function renderReceiptDetail(receipt) {
+    selectedReceiptId = receipt.receipt_id;
+    detailTitle.textContent = receipt.vendor_name;
+    detailSubtitle.textContent = `${formatDate(receipt.receipt_date)} - ${receipt.receipt_id}`;
+    detailStatus.style.display = 'none';
+    detailBody.style.display = 'grid';
+    copyIdBtn.disabled = false;
+
+    document.getElementById('detailId').textContent = receipt.receipt_id;
+    document.getElementById('detailVendor').textContent = receipt.vendor_name;
+    document.getElementById('detailDate').textContent = formatDate(receipt.receipt_date);
+    document.getElementById('detailReceiptNumber').textContent = formatValue(receipt.receipt_number);
+    document.getElementById('detailSubtotal').textContent = formatMoney(receipt.subtotal, receipt.currency);
+    document.getElementById('detailTax').textContent = formatMoney(receipt.tax_amount, receipt.currency);
+    document.getElementById('detailTotal').textContent = formatMoney(receipt.total_amount, receipt.currency);
+    document.getElementById('detailUpdated').textContent = receipt.updated_at;
+    document.getElementById('rawText').textContent = receipt.receipt_text || 'No raw text saved.';
+
+    itemsBody.innerHTML = '';
+    if (!receipt.items || receipt.items.length === 0) {
+        itemsBody.innerHTML = '<tr><td colspan="5" class="subtle">No items saved for this receipt.</td></tr>';
+        return;
+    }
+
+    receipt.items.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="item-name"></td>
+            <td class="number item-quantity"></td>
+            <td class="item-unit"></td>
+            <td class="number item-unit-price"></td>
+            <td class="number item-total-price"></td>
+        `;
+        row.querySelector('.item-name').textContent = item.item_name;
+        row.querySelector('.item-quantity').textContent = formatValue(item.quantity);
+        row.querySelector('.item-unit').textContent = formatValue(item.quantity_unit);
+        row.querySelector('.item-unit-price').textContent = formatMoney(item.unit_price, receipt.currency);
+        row.querySelector('.item-total-price').textContent = formatMoney(item.total_price, receipt.currency);
+        itemsBody.appendChild(row);
+    });
+}
+
+loadReceipts();
+    </script>
+</body>
+
+</html>
