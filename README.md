@@ -15,10 +15,13 @@ The API returns:
 - the raw OCR text, and
 - a normalized object containing vendor, date, totals, and line items.
 
+After review, the browser UI can save the edited receipt into a local SQLite database at `receipts.sqlite3`.
+
 ## Repository layout
 
-- [api.py](api.py) — FastAPI service with the `/extract` endpoint.
-- [receipt-scan.html](receipt-scan.html) — upload UI for parsing a receipt/invoice image.
+- [api.py](api.py) — FastAPI service with the `/extract` and `/receipts` endpoints.
+- [receipt-scan.html](receipt-scan.html) — upload UI for parsing, reviewing, and saving a receipt/invoice image.
+- [receipt-list.html](receipt-list.html) — saved receipt browser backed by the local SQLite database.
 - [vision-chat.html](vision-chat.html) — simple image Q&A chat demo.
 - [requirements.txt](requirements.txt) — Python dependencies.
 
@@ -76,6 +79,20 @@ The page expects the backend to be running at:
 http://localhost:8000/extract
 ```
 
+After extraction, review/edit the fields and click **Save to Local DB** to write the receipt and items to `receipts.sqlite3`.
+
+## Use the saved receipts UI
+
+Open [receipt-list.html](receipt-list.html) in a browser.
+
+The page expects the backend to be running at:
+
+```text
+http://localhost:8000/receipts
+```
+
+It lists saved receipts from the local SQLite database and shows the selected receipt's metadata, totals, items, and raw extracted text.
+
 ### Notes
 - The backend currently accepts image files with extensions `.png`, `.jpg`, `.jpeg`, and `.webp`.
 - PDF support is not implemented yet, but may be added in the future.
@@ -126,6 +143,40 @@ Response shape:
   }
 }
 ```
+
+### `POST /receipts`
+
+Request body:
+- JSON
+- optional `receipt_id` to update an existing local receipt
+- optional `receipt_text`
+- reviewed `data` using the same receipt schema returned by `/extract`
+- `data.receipt_date` must be a date serialized as `YYYY-MM-DD`
+
+When `receipt_id` is omitted, the server creates an id from vendor and receipt date, such as `walmart-20240512-001`. If a receipt number is present and a matching vendor/date/receipt-number row exists, the endpoint updates that row.
+
+The local database has:
+- `receipts` table for receipt-level fields and raw extracted text, with `receipt_date` declared as `DATE`
+- `items` table for line items with a foreign key to `receipts.receipt_id`
+
+Response shape:
+
+```json
+{
+  "receipt_id": "walmart-20240512-001",
+  "action": "created",
+  "item_count": 1
+}
+```
+
+### `GET /receipts`
+
+Returns saved receipt summaries from the local database, including receipt id, vendor, date (`YYYY-MM-DD`), total, currency, timestamps, and item count.
+
+### `GET /receipts/{receipt_id}`
+
+Returns one saved receipt with receipt-level fields, date (`YYYY-MM-DD`), raw extracted text, and line items.
+
 
 ## CORS troubleshooting for Ollama
 
