@@ -120,8 +120,13 @@ refreshBtn.addEventListener('click', loadReceipts);
 searchInput.addEventListener('input', renderReceiptList);
 copyIdBtn.addEventListener('click', async () => {
     if (!selectedReceiptId) return;
-    await navigator.clipboard.writeText(selectedReceiptId);
-    copyIdBtn.textContent = 'Copied';
+    try {
+        await navigator.clipboard.writeText(selectedReceiptId);
+        copyIdBtn.textContent = 'Copied';
+    } catch (error) {
+        console.error('Clipboard write failed:', error);
+        copyIdBtn.textContent = 'Copy failed';
+    }
     setTimeout(() => { copyIdBtn.textContent = 'Copy ID'; }, 1200);
 });
 

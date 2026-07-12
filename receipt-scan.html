@@ -16,8 +16,8 @@
             <h2>Upload Document</h2>
             <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
                 <p>Click to select or drag & drop</p>
-                <span class="hint">Supports PDF, PNG, JPG, WEBP</span>
-                <input type="file" id="fileInput" accept=".pdf, .png, .jpg, .jpeg, .webp">
+                <span class="hint">Supports PNG, JPG, JPEG, WEBP</span>
+                <input type="file" id="fileInput" accept=".png, .jpg, .jpeg, .webp">
             </div>
 
             <button id="uploadBtn" class="btn" disabled>Extract Data</button>
@@ -264,6 +264,7 @@ function appendItemRow(item = {}) {
     removeButton.type = 'button';
     removeButton.textContent = 'X';
     removeButton.title = 'Remove item';
+    removeButton.setAttribute('aria-label', 'Remove item');
     removeButton.addEventListener('click', () => row.remove());
     appendCell(row, removeButton);
 
